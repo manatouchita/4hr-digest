@@ -1,0 +1,47 @@
+# =========================================================
+# Render の構成。デプロイ用リポジトリの直下に置いて使う。
+#
+# 無料プランには永続ディスクが付けられないので disk: は書かない。
+# 消えて困る状態（アカウント・履歴・CSV本文）は Supabase に置き、
+# 動画と中間ファイルはコンテナ内の /tmp に置いて使い捨てる。
+# =========================================================
+services:
+  - type: web
+    name: 4hr-digest
+    runtime: docker
+    plan: free
+    region: singapore
+
+    # ffmpeg と Python が要るので標準のNode環境ではなくDockerで固める。
+    dockerfilePath: ./digest_app/Dockerfile
+    dockerContext: .
+
+    healthCheckPath: /healthz
+
+    envVars:
+      - key: NODE_ENV
+        value: production
+
+      # 状態の保存先。この2つが無いとローカルのファイル保存に落ちるが、
+      # 無料プランではディスクが消えるので、本番では必ず設定する。
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+
+      # 文字起こしと見どころ選定に使う。
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+
+      # ログインCookieの署名鍵。Renderに生成させる。
+      # 手で変えると全員がログインし直しになるだけで、実害は無い。
+      - key: SESSION_SECRET
+        generateValue: true
+
+      # 初回起動時の管理者パスワード。
+      # 管理者が既にいる場合は読まれないので、後から消しても構わない。
+      # 設定しない場合はランダム生成され、起動ログに1回だけ出る。
+      - key: ADMIN_PASSWORD
+        sync: false

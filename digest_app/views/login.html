@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ログイン｜4HR ダイジェスト抽出</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; display: grid; place-items: center;
+    background: #f4f5f7; color: #1f2933;
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Segoe UI", sans-serif;
+  }
+  .card {
+    width: min(92vw, 380px); background: #fff; border-radius: 12px; padding: 32px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.08), 0 8px 24px rgba(0,0,0,.06);
+  }
+  h1 { font-size: 17px; margin: 0 0 4px; }
+  .sub { font-size: 12px; color: #7b8794; margin: 0 0 24px; }
+  label { display: block; font-size: 12px; font-weight: 600; margin: 14px 0 5px; }
+  input {
+    width: 100%; padding: 9px 11px; font-size: 14px; border: 1px solid #cbd2d9;
+    border-radius: 6px; background: #fff;
+  }
+  input:focus { outline: 2px solid #2f6fed33; border-color: #2f6fed; }
+  button {
+    width: 100%; margin-top: 22px; padding: 10px; font-size: 14px; font-weight: 600;
+    color: #fff; background: #2f6fed; border: 0; border-radius: 6px; cursor: pointer;
+  }
+  button:hover { background: #2559c9; }
+  .err {
+    margin-bottom: 14px; padding: 9px 11px; font-size: 12px; border-radius: 6px;
+    background: #fdecec; color: #a51c1c;
+  }
+</style>
+</head>
+<body>
+  <form class="card" method="post" action="/login">
+    <h1>ダイジェスト見どころ抽出</h1>
+    <p class="sub">4HR 動画編集チーム</p>
+    __ERROR__
+    <label for="id">ID</label>
+    <input id="id" name="id" autocomplete="username" autofocus required>
+    <label for="pw">パスワード</label>
+    <input id="pw" name="pw" type="password" autocomplete="current-password" required>
+    <button type="submit">ログイン</button>
+  </form>
+</body>
+</html>

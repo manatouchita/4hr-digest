@@ -1,0 +1,8 @@
+node_modules/
+**/*.tmp
+**/.DS_Store
+# ローカル実行時の作業ディレクトリ。動画も鍵も入るので絶対に上げない。
+digest_app/data/
+digest_cache/
+digest_plans/
+.env

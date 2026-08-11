@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>4HR ダイジェスト見どころ抽出</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: #f4f5f7; color: #1f2933;
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Segoe UI", sans-serif;
+    font-size: 14px; line-height: 1.7;
+  }
+  header {
+    background: #fff; border-bottom: 1px solid #e4e7eb; padding: 12px 24px;
+    display: flex; align-items: center; gap: 14px;
+  }
+  header h1 { font-size: 15px; margin: 0; flex: 1; }
+  header a { font-size: 12px; color: #52606d; text-decoration: none; }
+  header a:hover { text-decoration: underline; }
+  main { max-width: 880px; margin: 0 auto; padding: 24px; }
+  .card {
+    background: #fff; border: 1px solid #e4e7eb; border-radius: 10px;
+    padding: 20px 22px; margin-bottom: 18px;
+  }
+  h2 { font-size: 14px; margin: 0 0 14px; }
+  .note {
+    background: #fff8e6; border: 1px solid #f0d48a; border-radius: 8px;
+    padding: 12px 15px; font-size: 12.5px; margin-bottom: 18px; line-height: 1.75;
+  }
+  .note b { color: #8a6100; }
+  label { display: block; font-size: 12px; font-weight: 600; margin: 0 0 5px; }
+  .row { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 14px; }
+  .row > div { flex: 1; min-width: 180px; }
+  input, select {
+    width: 100%; padding: 8px 10px; font-size: 14px;
+    border: 1px solid #cbd2d9; border-radius: 6px; background: #fff;
+  }
+  input:focus, select:focus { outline: 2px solid #2f6fed33; border-color: #2f6fed; }
+  input.bad { border-color: #d64545; background: #fff7f7; }
+  .hint { font-size: 11.5px; color: #7b8794; margin-top: 4px; }
+  .drop {
+    border: 2px dashed #cbd2d9; border-radius: 8px; padding: 26px; text-align: center;
+    color: #7b8794; cursor: pointer; background: #fafbfc; margin-bottom: 14px;
+  }
+  .drop.over { border-color: #2f6fed; background: #f0f5ff; color: #2559c9; }
+  .drop strong { color: #1f2933; display: block; font-size: 14px; margin-bottom: 3px; }
+  button {
+    padding: 9px 18px; font-size: 13px; font-weight: 600; color: #fff;
+    background: #2f6fed; border: 0; border-radius: 6px; cursor: pointer;
+  }
+  button:disabled { background: #cbd2d9; cursor: not-allowed; }
+  button.ghost { background: #fff; color: #2f6fed; border: 1px solid #cbd2d9; }
+  .bar { height: 6px; background: #e4e7eb; border-radius: 3px; overflow: hidden; margin: 10px 0 6px; }
+  .bar > i { display: block; height: 100%; background: #2f6fed; width: 0; transition: width .2s; }
+  pre {
+    background: #1f2933; color: #cbd2d9; border-radius: 6px; padding: 12px 14px;
+    font-size: 11.5px; line-height: 1.6; max-height: 220px; overflow: auto; margin: 0;
+    white-space: pre-wrap; word-break: break-all;
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #eef1f4; vertical-align: middle; }
+  th { font-size: 11px; color: #7b8794; font-weight: 600; }
+  .tag { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+  .t-done { background: #e3f6e9; color: #1a7f43; }
+  .t-run { background: #e6efff; color: #2559c9; }
+  .t-queue { background: #eef1f4; color: #616e7c; }
+  .t-err { background: #fdecec; color: #a51c1c; }
+  .dl { font-size: 12px; color: #2f6fed; text-decoration: none; margin-right: 10px; }
+  .dl:hover { text-decoration: underline; }
+  .empty { color: #9aa5b1; font-size: 12.5px; padding: 8px 0; }
+  .msg { font-size: 12.5px; margin-top: 10px; }
+  .msg.err { color: #a51c1c; }
+</style>
+</head>
+<body>
+<header>
+  <h1>ダイジェスト見どころ抽出</h1>
+  <span id="who" style="font-size:12px;color:#7b8794"></span>
+  <a id="adminLink" href="/admin" hidden>管理</a>
+  <a href="/logout">ログアウト</a>
+</header>
+
+<main>
+  <div class="note">
+    <b>⚠ 出力される抜粋は自動文字起こしです。</b>固有名詞を中心に誤変換があります（例:「京大」が「兄弟」になる）。
+    抜粋は「切り出す位置を確かめるための目印」として使い、実際に何と言っているかは必ず映像で確認してください。<b>時刻は音声に合わせてあります。</b>
+  </div>
+
+  <div class="card">
+    <h2>完成版HRから見どころ候補を出す</h2>
+    <div class="drop" id="drop">
+      <strong id="dropTitle">動画ファイルを選ぶ</strong>
+      <span id="dropSub">ここにドラッグ、またはクリックして選択（編集済みの完成版mp4）</span>
+      <input type="file" id="file" accept="video/*,.mp4,.mov,.m4v,.mkv" hidden>
+    </div>
+    <div class="row">
+      <div>
+        <label for="code">HRコード</label>
+        <input id="code" placeholder="25-UT-ot-01" autocapitalize="off" spellcheck="false">
+        <div class="hint">CSVのファイル名になります。ファイル名から自動で入ります。</div>
+      </div>
+      <div>
+        <label for="cand">候補の本数</label>
+        <select id="cand">
+          <option value="6" selected>6本（推奨）</option>
+          <option value="4">4本</option>
+          <option value="8">8本</option>
+          <option value="10">10本</option>
+        </select>
+        <div class="hint">上位2本が採用想定。残りは差し替え用の予備です。</div>
+      </div>
+    </div>
+    <button id="run" disabled>抽出をはじめる</button>
+    <div id="msg" class="msg"></div>
+    <div id="prog" hidden>
+      <div class="bar"><i id="barFill"></i></div>
+      <div class="hint" id="progText"></div>
+      <pre id="log" hidden></pre>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>これまでの実行</h2>
+    <table>
+      <thead><tr><th>HRコード</th><th>状態</th><th>候補</th><th>実行日時</th><th>ダウンロード</th></tr></thead>
+      <tbody id="hist"></tbody>
+    </table>
+    <div class="empty" id="histEmpty" hidden>まだ実行がありません。</div>
+  </div>
+</main>
+
+<script>
+const USER = __USER__;
+const $ = s => document.querySelector(s);
+$('#who').textContent = USER.name;
+if (USER.role === 'admin') $('#adminLink').hidden = false;
+
+const CODE_RE = /^\d{2}-[A-Z]{2}-[a-z]{2}-\d{2}$/;
+let picked = null;
+
+/* ---- ファイル選択 ---- */
+const drop = $('#drop'), fileInput = $('#file');
+drop.onclick = () => fileInput.click();
+drop.ondragover = e => { e.preventDefault(); drop.classList.add('over'); };
+drop.ondragleave = () => drop.classList.remove('over');
+drop.ondrop = e => {
+  e.preventDefault(); drop.classList.remove('over');
+  if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]);
+};
+fileInput.onchange = () => fileInput.files[0] && setFile(fileInput.files[0]);
+
+function setFile(f) {
+  picked = f;
+  $('#dropTitle').textContent = f.name;
+  $('#dropSub').textContent = (f.size / 1048576).toFixed(0) + ' MB';
+  // ファイル名にHRコードが入っていれば拾う。無ければ手入力してもらう。
+  const m = /\d{2}-[A-Z]{2}-[a-z]{2}-\d{2}/.exec(f.name);
+  if (m && !$('#code').value) $('#code').value = m[0];
+  validate();
+}
+$('#code').oninput = validate;
+function validate() {
+  const ok = CODE_RE.test($('#code').value.trim());
+  $('#code').classList.toggle('bad', $('#code').value.trim() !== '' && !ok);
+  $('#run').disabled = !(picked && ok);
+  return ok;
+}
+
+/* ---- 実行 ---- */
+$('#run').onclick = () => {
+  if (!picked || !validate()) return;
+  const code = $('#code').value.trim();
+  $('#run').disabled = true;
+  $('#msg').textContent = ''; $('#msg').className = 'msg';
+  $('#prog').hidden = false; $('#log').hidden = true; $('#log').textContent = '';
+  setBar(0, 'アップロード中… 0%');
+
+  const xhr = new XMLHttpRequest();
+  xhr.open('PUT', `/api/upload?code=${encodeURIComponent(code)}&name=${encodeURIComponent(picked.name)}`);
+  xhr.upload.onprogress = e => {
+    if (!e.lengthComputable) return;
+    const pct = Math.round(e.loaded / e.total * 100);
+    setBar(pct * 0.35, `アップロード中… ${pct}%`);
+  };
+  xhr.onload = () => {
+    let r; try { r = JSON.parse(xhr.responseText); } catch { return fail('アップロードに失敗しました'); }
+    if (xhr.status !== 200) return fail(r.error || 'アップロードに失敗しました');
+    setBar(35, '処理を開始しています…');
+    startJob(code, r.uploadId, r.fileName);
+  };
+  xhr.onerror = () => fail('アップロード中に通信が切れました');
+  xhr.send(picked);
+};
+
+function setBar(pct, text) { $('#barFill').style.width = pct + '%'; $('#progText').textContent = text; }
+function fail(m) {
+  $('#msg').textContent = m; $('#msg').className = 'msg err';
+  $('#prog').hidden = true; $('#run').disabled = false;
+}
+
+async function startJob(code, uploadId, fileName) {
+  const res = await fetch('/api/jobs', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code, uploadId, fileName, candidates: +$('#cand').value }),
+  });
+  const r = await res.json();
+  if (!res.ok) return fail(r.error || '開始できませんでした');
+  poll(r.job.id);
+}
+
+async function poll(id) {
+  const res = await fetch('/api/jobs/' + id);
+  const { job, log } = await res.json();
+  if (log && log.length) { $('#log').hidden = false; $('#log').textContent = log.join('\n'); $('#log').scrollTop = 1e6; }
+  if (job.status === 'queued') setBar(38, '他の処理の完了を待っています…');
+  // 実処理の進捗はPython側のログ行数からしか分からないので、
+  // 見かけ上の進みは 35〜95% の範囲で緩やかに進める。
+  if (job.status === 'running') setBar(Math.min(95, 40 + (log || []).length * 4), '文字起こし・見どころ選定中…（2分ほど）');
+  if (job.status === 'done') {
+    setBar(100, `完了：候補 ${job.sceneCount} 本` + (job.warnCount ? `（要確認 ${job.warnCount} 件）` : ''));
+    $('#run').disabled = false; loadHist(); return;
+  }
+  if (job.status === 'error') return fail(job.error || '処理に失敗しました');
+  setTimeout(() => poll(id), 2000);
+}
+
+/* ---- 履歴 ---- */
+const TAG = { done: ['t-done', '完了'], running: ['t-run', '処理中'], queued: ['t-queue', '待機中'], error: ['t-err', '失敗'] };
+async function loadHist() {
+  const { jobs } = await (await fetch('/api/jobs')).json();
+  const tb = $('#hist'); tb.innerHTML = '';
+  $('#histEmpty').hidden = jobs.length > 0;
+  for (const j of jobs) {
+    const [cls, txt] = TAG[j.status] || ['t-queue', j.status];
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><b>${esc(j.code)}</b></td>
+      <td><span class="tag ${cls}">${txt}</span>${j.error ? ' <span style="color:#a51c1c;font-size:11px">' + esc(j.error) + '</span>' : ''}</td>
+      <td>${j.sceneCount ? j.sceneCount + '本' : '—'}</td>
+      <td>${fmt(j.createdAt)}</td>
+      <td>${j.hasCsv ? `<a class="dl" href="/api/jobs/${j.id}/csv">CSV</a>` : ''}${j.hasMd ? `<a class="dl" href="/api/jobs/${j.id}/md">詳細(md)</a>` : ''}</td>`;
+    tb.appendChild(tr);
+  }
+}
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const fmt = s => s ? new Date(s).toLocaleString('ja-JP', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—';
+loadHist();
+</script>
+</body>
+</html>

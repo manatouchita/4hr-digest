@@ -1,0 +1,6 @@
+{
+  "name": "4hr-digest",
+  "private": true,
+  "engines": { "node": ">=18" },
+  "scripts": { "start": "node digest_app/app.js" }
+}

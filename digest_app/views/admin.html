@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>管理｜4HR ダイジェスト抽出</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: #f4f5f7; color: #1f2933; font-size: 14px; line-height: 1.7;
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Segoe UI", sans-serif;
+  }
+  header {
+    background: #fff; border-bottom: 1px solid #e4e7eb; padding: 12px 24px;
+    display: flex; align-items: center; gap: 14px;
+  }
+  header h1 { font-size: 15px; margin: 0; flex: 1; }
+  header a { font-size: 12px; color: #52606d; text-decoration: none; }
+  header a:hover { text-decoration: underline; }
+  main { max-width: 980px; margin: 0 auto; padding: 24px; }
+  .card {
+    background: #fff; border: 1px solid #e4e7eb; border-radius: 10px;
+    padding: 20px 22px; margin-bottom: 18px;
+  }
+  h2 { font-size: 14px; margin: 0 0 4px; }
+  .sub { font-size: 12px; color: #7b8794; margin: 0 0 16px; }
+  .row { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+  .row > div { flex: 1; min-width: 150px; }
+  label { display: block; font-size: 12px; font-weight: 600; margin: 0 0 5px; }
+  input {
+    width: 100%; padding: 8px 10px; font-size: 14px;
+    border: 1px solid #cbd2d9; border-radius: 6px; background: #fff;
+  }
+  input:focus { outline: 2px solid #2f6fed33; border-color: #2f6fed; }
+  button {
+    padding: 8px 16px; font-size: 13px; font-weight: 600; color: #fff;
+    background: #2f6fed; border: 0; border-radius: 6px; cursor: pointer; white-space: nowrap;
+  }
+  button.mini { padding: 3px 10px; font-size: 11.5px; background: #fff; color: #52606d; border: 1px solid #cbd2d9; font-weight: 500; }
+  button.mini:hover { background: #f4f5f7; }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #eef1f4; vertical-align: middle; }
+  th { font-size: 11px; color: #7b8794; font-weight: 600; }
+  .tag { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+  .t-done { background: #e3f6e9; color: #1a7f43; }
+  .t-run { background: #e6efff; color: #2559c9; }
+  .t-queue { background: #eef1f4; color: #616e7c; }
+  .t-err { background: #fdecec; color: #a51c1c; }
+  .t-off { background: #eef1f4; color: #9aa5b1; }
+  .pw {
+    margin-top: 14px; padding: 12px 14px; border-radius: 8px;
+    background: #e9f6ee; border: 1px solid #a7d9bb; font-size: 13px;
+  }
+  .pw code {
+    font-size: 15px; font-weight: 700; letter-spacing: .5px; background: #fff;
+    padding: 3px 8px; border-radius: 4px; border: 1px solid #cbd2d9; user-select: all;
+  }
+  .pw small { display: block; color: #52606d; font-size: 11.5px; margin-top: 5px; }
+  .err { color: #a51c1c; font-size: 12.5px; margin-top: 10px; }
+  .totals { font-size: 12.5px; color: #52606d; margin-bottom: 14px; }
+  .totals b { color: #1f2933; }
+  .dl { font-size: 12px; color: #2f6fed; text-decoration: none; margin-right: 8px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>管理</h1>
+  <span id="who" style="font-size:12px;color:#7b8794"></span>
+  <a href="/">抽出画面へ</a>
+  <a href="/logout">ログアウト</a>
+</header>
+
+<main>
+  <div class="card">
+    <h2>アカウント発行</h2>
+    <p class="sub">自己登録はできません。ここで発行したIDと初期パスワードを本人に渡してください。パスワードは発行直後の一度しか表示されません。</p>
+    <div class="row">
+      <div><label for="nid">ID（英数字）</label><input id="nid" placeholder="editor01" autocapitalize="off" spellcheck="false"></div>
+      <div><label for="nname">表示名</label><input id="nname" placeholder="山田 太郎"></div>
+      <button id="add">発行する</button>
+    </div>
+    <div id="issued"></div>
+    <div id="uerr" class="err"></div>
+  </div>
+
+  <div class="card">
+    <h2>アカウント一覧</h2>
+    <p class="sub">停止したアカウントはログインできなくなります。実行履歴を残すため削除はしません。</p>
+    <table>
+      <thead><tr><th>ID</th><th>表示名</th><th>権限</th><th>状態</th><th>実行数</th><th>最終ログイン</th><th></th></tr></thead>
+      <tbody id="users"></tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>実行履歴（全員）</h2>
+    <div class="totals" id="totals"></div>
+    <table>
+      <thead><tr><th>HRコード</th><th>実行者</th><th>状態</th><th>候補</th><th>動画尺</th><th>概算費用</th><th>実行日時</th><th></th></tr></thead>
+      <tbody id="jobs"></tbody>
+    </table>
+  </div>
+</main>
+
+<script>
+const USER = __USER__;
+const $ = s => document.querySelector(s);
+$('#who').textContent = USER.name;
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const fmt = s => s ? new Date(s).toLocaleString('ja-JP', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—';
+const hhmm = s => s ? `${Math.floor(s / 60)}分${String(Math.round(s % 60)).padStart(2, '0')}秒` : '—';
+// 為替は概算表示用の固定値。厳密な経費精算には使わない。
+const YEN = 155;
+
+$('#add').onclick = async () => {
+  $('#uerr').textContent = ''; $('#issued').innerHTML = '';
+  const res = await fetch('/api/users', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id: $('#nid').value.trim(), name: $('#nname').value.trim() }),
+  });
+  const r = await res.json();
+  if (!res.ok) return $('#uerr').textContent = r.error || '発行に失敗しました';
+  $('#issued').innerHTML = `<div class="pw"><b>${esc(r.id)}</b> を発行しました。初期パスワード: <code>${esc(r.password)}</code>
+    <small>この画面を閉じると二度と表示されません。本人に渡したら、ログイン後にパスワードを変更してもらってください。</small></div>`;
+  $('#nid').value = ''; $('#nname').value = '';
+  loadUsers();
+};
+
+async function loadUsers() {
+  const { users } = await (await fetch('/api/users')).json();
+  const tb = $('#users'); tb.innerHTML = '';
+  for (const u of users) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><b>${esc(u.id)}</b></td>
+      <td>${esc(u.name)}</td>
+      <td>${u.role === 'admin' ? '管理者' : '編集者'}</td>
+      <td><span class="tag ${u.disabled ? 't-off' : 't-done'}">${u.disabled ? '停止中' : '有効'}</span></td>
+      <td>${u.jobs}</td>
+      <td>${fmt(u.lastLoginAt)}</td>
+      <td></td>`;
+    if (u.id !== USER.id) {
+      const cell = tr.lastElementChild;
+      cell.append(mini(u.disabled ? '再開' : '停止', () => act(u.id, 'toggle')));
+      cell.append(document.createTextNode(' '));
+      cell.append(mini('PW再発行', () => act(u.id, 'reset')));
+    }
+    tb.appendChild(tr);
+  }
+}
+function mini(text, fn) { const b = document.createElement('button'); b.className = 'mini'; b.textContent = text; b.onclick = fn; return b; }
+
+async function act(id, what) {
+  if (what === 'reset' && !confirm(`${id} のパスワードを再発行します。現在のパスワードは使えなくなります。`)) return;
+  const r = await (await fetch(`/api/users/${id}/${what}`, { method: 'POST' })).json();
+  if (r.error) return alert(r.error);
+  if (r.password) {
+    $('#issued').innerHTML = `<div class="pw"><b>${esc(id)}</b> の新しいパスワード: <code>${esc(r.password)}</code>
+      <small>この画面を閉じると二度と表示されません。</small></div>`;
+  }
+  loadUsers();
+}
+
+const TAG = { done: ['t-done', '完了'], running: ['t-run', '処理中'], queued: ['t-queue', '待機中'], error: ['t-err', '失敗'] };
+async function loadJobs() {
+  const { jobs } = await (await fetch('/api/jobs')).json();
+  const tb = $('#jobs'); tb.innerHTML = '';
+  let sum = 0, month = 0;
+  const ym = new Date().toISOString().slice(0, 7);
+  for (const j of jobs) {
+    sum += j.costUsd || 0;
+    if ((j.createdAt || '').startsWith(ym)) month += j.costUsd || 0;
+    const [cls, txt] = TAG[j.status] || ['t-queue', j.status];
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><b>${esc(j.code)}</b></td>
+      <td>${esc(j.userName || j.user)}</td>
+      <td><span class="tag ${cls}">${txt}</span></td>
+      <td>${j.sceneCount ? j.sceneCount + '本' : '—'}</td>
+      <td>${hhmm(j.videoDurationSec)}</td>
+      <td>${j.costUsd ? '約' + Math.round(j.costUsd * YEN) + '円' : '—'}</td>
+      <td>${fmt(j.createdAt)}</td>
+      <td>${j.hasCsv ? `<a class="dl" href="/api/jobs/${j.id}/csv">CSV</a>` : ''}${j.hasMd ? `<a class="dl" href="/api/jobs/${j.id}/md">md</a>` : ''}</td>`;
+    tb.appendChild(tr);
+  }
+  $('#totals').innerHTML = `直近100件の合計 <b>約${Math.round(sum * YEN)}円</b>　／　今月分 <b>約${Math.round(month * YEN)}円</b>`;
+}
+
+loadUsers(); loadJobs();
+setInterval(loadJobs, 10000);
+</script>
+</body>
+</html>
