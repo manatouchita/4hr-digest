@@ -1,0 +1,10 @@
+# イメージに入れないもの。
+# digest_app/data には動画とセッション鍵が入る。手元でビルドしたときに
+# 混入すると、鍵をイメージに焼き込んだまま配ることになる。
+digest_app/data/
+digest_cache/
+digest_plans/
+.env
+.git/
+**/.DS_Store
+node_modules/
