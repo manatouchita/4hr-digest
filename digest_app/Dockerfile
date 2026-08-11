@@ -17,8 +17,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Debianの python3 にそのまま pip すると PEP668 で弾かれる。
 # システムを汚さないよう仮想環境に入れ、PYTHON でそこを指す。
+# anthropic : 見どころ選定
+# openpyxl  : 編集者に渡す一覧表（xlsx）の書き出し
 ENV VENV=/opt/venv
-RUN python3 -m venv $VENV && $VENV/bin/pip install --no-cache-dir anthropic
+RUN python3 -m venv $VENV && $VENV/bin/pip install --no-cache-dir anthropic openpyxl
 ENV PYTHON=$VENV/bin/python
 
 WORKDIR /app

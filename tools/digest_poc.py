@@ -17,7 +17,6 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import csv
 import json
 import re
 import subprocess
@@ -651,38 +650,103 @@ def write_outputs(video: Path, transcript: dict, scenes: list[dict],
         md += ["", "## 警告"] + [f"- {w}" for w in warnings]
     md_path = out_dir / f"{stem}_digest_plan.md"
     md_path.write_text("\n".join(md), encoding="utf-8")
-    write_csv(stem, scenes, out_dir)
+    write_sheet(stem, scenes, out_dir)
     return json_path, md_path
 
 
 # ツールが記入する列と、レビュー担当者が記入する列。
 # 再実行でツールが上書きするのは前半だけ、という境界を表側でも分かるようにする。
-CSV_HEADER = ["HRコード", "rank", "区分", "IN", "OUT", "尺(秒)", "ラベル",
-              "抜粋（自動文字起こし・誤変換の可能性あり）", "テロップ案", "警告",
-              "採用", "テロップ確定", "IN修正", "OUT修正", "メモ"]
+# 幅は文字数の目安。抜粋とテロップ案は折り返す前提で広く取る。
+SHEET_COLUMNS = [
+    ("HRコード", 14), ("rank", 6), ("区分", 7), ("IN", 10), ("OUT", 10),
+    ("尺(秒)", 8), ("ラベル", 22),
+    ("抜粋（自動文字起こし・誤変換の可能性あり）", 52), ("テロップ案", 26), ("警告", 20),
+    ("採用", 7), ("テロップ確定", 26), ("IN修正", 10), ("OUT修正", 10), ("メモ", 22),
+]
+WRAP_COLUMNS = {"抜粋（自動文字起こし・誤変換の可能性あり）", "テロップ案", "警告",
+                "ラベル", "テロップ確定", "メモ"}
+FILLED_BY_TOOL = 10  # 左から10列はツールが書く。残りは記入欄。
 HR_CODE_RE = re.compile(r"\d{2}-[A-Z]{2}-[a-z]{2}-\d{2}")
 
 
-def write_csv(stem: str, scenes: list[dict], out_dir: Path) -> Path:
-    """編集者が切り抜き時刻を参照するための一覧表（1シーン＝1行）。"""
+def write_sheet(stem: str, scenes: list[dict], out_dir: Path) -> Path:
+    """編集者が切り抜き時刻を参照し、採否を記入するための一覧表（1シーン＝1行）。
+
+    CSVではなくxlsxで出す。この表は書き出しっぱなしのデータではなく、
+    編集者が「採用」以降の列を埋めていく作業用紙なので、列幅・折り返し・
+    見出し固定・採用欄のプルダウンといった体裁を最初から持たせておきたい。
+    CSVだと開くたびに幅を直すことになり、記入も自由入力で揺れる。
+    """
+    from openpyxl import Workbook
+    from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+    from openpyxl.utils import get_column_letter
+    from openpyxl.worksheet.datavalidation import DataValidation
+
     code = m.group(0) if (m := HR_CODE_RE.search(stem)) else stem
-    path = out_dir / f"{stem}_digest_scenes.csv"
-    with path.open("w", encoding="utf-8-sig", newline="") as fh:
-        w = csv.writer(fh)
-        w.writerow(CSV_HEADER)
-        for s in scenes:
-            notes = list(s.get("adjustments") or [])
-            if s["duration_sec"] < MIN_SCENE_SEC:
-                notes.append(f"尺が下限{MIN_SCENE_SEC}秒未満")
-            elif s["duration_sec"] > MAX_SCENE_SEC:
-                notes.append(f"尺が上限{MAX_SCENE_SEC}秒超")
-            w.writerow([
-                code, s["rank"], "推奨" if s["rank"] <= 2 else "予備",
-                fmt_hhmmss(s["start_sec"]), fmt_hhmmss(s["end_sec"]),
-                int(round(s["duration_sec"])), s["label"],
-                s["quote"], s["telop"], " / ".join(notes),
-                "", "", "", "", "",
-            ])
+    path = out_dir / f"{stem}_digest_scenes.xlsx"
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "見どころ候補"
+
+    head_fill = PatternFill("solid", fgColor="E8EDF5")
+    entry_fill = PatternFill("solid", fgColor="FFFDF0")  # 記入欄を薄く色分けする
+    rec_font = Font(bold=True)
+    warn_font = Font(color="A51C1C")
+    thin = Side(style="thin", color="D8DDE3")
+    border = Border(left=thin, right=thin, top=thin, bottom=thin)
+    top = Alignment(vertical="top")
+    top_wrap = Alignment(vertical="top", wrap_text=True)
+
+    for i, (name, width) in enumerate(SHEET_COLUMNS, start=1):
+        c = ws.cell(row=1, column=i, value=name)
+        c.font = Font(bold=True)
+        c.fill = head_fill
+        c.alignment = Alignment(vertical="center", wrap_text=True)
+        c.border = border
+        ws.column_dimensions[get_column_letter(i)].width = width
+
+    for r, s in enumerate(scenes, start=2):
+        notes = list(s.get("adjustments") or [])
+        if s["duration_sec"] < MIN_SCENE_SEC:
+            notes.append(f"尺が下限{MIN_SCENE_SEC}秒未満")
+        elif s["duration_sec"] > MAX_SCENE_SEC:
+            notes.append(f"尺が上限{MAX_SCENE_SEC}秒超")
+        recommended = s["rank"] <= 2
+        row = [
+            code, s["rank"], "推奨" if recommended else "予備",
+            fmt_hhmmss(s["start_sec"]), fmt_hhmmss(s["end_sec"]),
+            int(round(s["duration_sec"])), s["label"],
+            s["quote"], s["telop"], " / ".join(notes),
+            None, None, None, None, None,
+        ]
+        for i, v in enumerate(row, start=1):
+            name = SHEET_COLUMNS[i - 1][0]
+            c = ws.cell(row=r, column=i, value=v)
+            c.alignment = top_wrap if name in WRAP_COLUMNS else top
+            c.border = border
+            # IN/OUT は文字列のまま置く。数値として解釈されると
+            # コピーしたときに時刻ではなくシリアル値が付いてくる。
+            if name in ("IN", "OUT", "IN修正", "OUT修正"):
+                c.number_format = "@"
+            if i > FILLED_BY_TOOL:
+                c.fill = entry_fill
+            if name == "区分" and recommended:
+                c.font = rec_font
+            if name == "警告" and v:
+                c.font = warn_font
+
+    last = len(scenes) + 1
+    if scenes:
+        # 採否は○×の2値。自由入力だと人によって表記が揺れて集計できない。
+        dv = DataValidation(type="list", formula1='"○,×"', allow_blank=True)
+        ws.add_data_validation(dv)
+        dv.add(f"K2:K{last}")
+        ws.auto_filter.ref = f"A1:{get_column_letter(len(SHEET_COLUMNS))}{last}"
+    ws.freeze_panes = "D2"  # HRコード〜区分と見出しを固定して横スクロールできるように
+    ws.row_dimensions[1].height = 30
+
+    wb.save(path)
     return path
 
 

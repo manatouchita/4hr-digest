@@ -184,7 +184,8 @@ async function loadJobs() {
       <td>${hhmm(j.videoDurationSec)}</td>
       <td>${j.costUsd ? '約' + Math.round(j.costUsd * YEN) + '円' : '—'}</td>
       <td>${fmt(j.createdAt)}</td>
-      <td>${j.hasCsv ? `<a class="dl" href="/api/jobs/${j.id}/csv">CSV</a>` : ''}${j.hasMd ? `<a class="dl" href="/api/jobs/${j.id}/md">md</a>` : ''}</td>`;
+      <td>${j.hasSheet ? `<a class="dl" href="/api/jobs/${j.id}/xlsx">xlsx</a>`
+        : j.hasCsv ? `<a class="dl" href="/api/jobs/${j.id}/csv">CSV</a>` : ''}${j.hasMd ? `<a class="dl" href="/api/jobs/${j.id}/md">md</a>` : ''}</td>`;
     tb.appendChild(tr);
   }
   $('#totals').innerHTML = `直近100件の合計 <b>約${Math.round(sum * YEN)}円</b>　／　今月分 <b>約${Math.round(month * YEN)}円</b>`;

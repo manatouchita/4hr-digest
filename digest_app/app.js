@@ -3,7 +3,7 @@
 
    起動:  node digest_app/app.js  →  http://localhost:3100
 
-   編集者が完成版HRをアップロードすると、見どころ候補のCSVが出る。
+   編集者が完成版HRをアップロードすると、見どころ候補の一覧表（xlsx）が出る。
    処理そのものは tools/digest_poc.py をそのまま呼ぶ。ロジックを
    JavaScriptに移植して二重管理にすると、CLIとWebで挙動がずれる。
 
@@ -28,7 +28,7 @@ const PORT = process.env.PORT || 3100;
 const PYTHON = process.env.PYTHON || 'python3';
 
 /* 動画とPythonの出力を置く場所。どちらも使い捨てで、消えても再実行すれば済む。
-   永続化が要るもの（アカウント・履歴・CSV本文）は store.js が見る。 */
+   永続化が要るもの（アカウント・履歴・出力した一覧表）は store.js が見る。 */
 const WORK_DIR = process.env.DIGEST_WORK_DIR || path.join(ROOT, 'data');
 const UPLOAD_DIR = path.join(WORK_DIR, 'uploads');
 const OUT_DIR = path.join(WORK_DIR, 'outputs');
@@ -110,7 +110,7 @@ const view = (file, repl = {}) => {
 };
 
 /* ---- HRコード ----
-   CSVのファイル名と表の主キーになる。ここが崩れると格納先を間違えるので、
+   出力ファイルの名前と表の主キーになる。ここが崩れると格納先を間違えるので、
    ファイル名任せにせず画面で確定させる。 */
 const HR_CODE_RE = /^\d{2}-[A-Z]{2}-[a-z]{2}-\d{2}$/;
 
@@ -169,18 +169,20 @@ function pump() {
   });
 }
 
-/* 出力を回収する。CSVもmdも数KBのテキストなので、ファイルとして持たず
-   ジョブの記録に本文ごと入れる。こうしておけば、再起動でディスクが
-   まるごと消えても過去のCSVを落とし直せる。 */
+/* 出力を回収する。一覧表もmdも十数KBしかないので、ファイルとして持たず
+   ジョブの記録に中身ごと入れる。こうしておけば、再起動でディスクが
+   まるごと消えても過去の出力を落とし直せる。
+   xlsxはバイナリなのでbase64にする。1本あたり20KB程度で、
+   テキストのまま持つより嵩むが、扱いを分けるほどの差ではない。 */
 function collect(job, outDir) {
   const files = fs.readdirSync(outDir);
-  const csv = files.find(f => f.endsWith('_digest_scenes.csv'));
-  if (!csv) throw new Error('CSVが生成されませんでした');
-  job.csvText = fs.readFileSync(path.join(outDir, csv), 'utf8');
+  const xlsx = files.find(f => f.endsWith('_digest_scenes.xlsx'));
+  if (!xlsx) throw new Error('一覧表（xlsx）が生成されませんでした');
+  job.xlsxB64 = fs.readFileSync(path.join(outDir, xlsx)).toString('base64');
   const md = files.find(f => f.endsWith('_digest_plan.md'));
   if (md) job.mdText = fs.readFileSync(path.join(outDir, md), 'utf8');
 
-  const plan = readJsonFile(path.join(outDir, csv.replace('_digest_scenes.csv', '_digest_plan.json')));
+  const plan = readJsonFile(path.join(outDir, xlsx.replace('_digest_scenes.xlsx', '_digest_plan.json')));
   if (plan) {
     job.sceneCount = (plan.scenes || []).length;
     job.warnCount = (plan.warnings || []).length;
@@ -199,7 +201,7 @@ function finish(job, status, error) {
      全文を残すと通信が膨れるが、原因は例外の直前数行にほぼ収まる。
      ここを残さないと、実行中の画面を閉じた時点で原因が追えなくなる。 */
   if (status === 'error') job.errorTail = (job.log || []).slice(-15).join('\n') || null;
-  // 数百MBの動画を残すとディスクがすぐ埋まる。CSVは記録側に移してあるので消してよい。
+  // 数百MBの動画を残すとディスクがすぐ埋まる。出力は記録側に移してあるので消してよい。
   try { if (job.videoPath) fs.rmSync(path.dirname(job.videoPath), { recursive: true, force: true }); } catch {}
   job.videoPath = null;
   saveJob(job);
@@ -214,7 +216,8 @@ const publicJob = j => ({
   createdAt: j.createdAt, finishedAt: j.finishedAt || null,
   sceneCount: j.sceneCount || null, warnCount: j.warnCount || null,
   videoDurationSec: j.videoDurationSec || null, costUsd: j.costUsd || 0,
-  hasCsv: !!j.csvText, hasMd: !!j.mdText,
+  // csvText は xlsx に切り替える前のジョブが持っている。過去分も落とせるようにしておく。
+  hasSheet: !!j.xlsxB64, hasCsv: !!j.csvText, hasMd: !!j.mdText,
 });
 
 /* =========================================================
@@ -314,19 +317,25 @@ const server = http.createServer(async (req, res) => {
     return sendJson(res, 200, { jobs: list.map(publicJob) });
   }
 
-  const jm = /^\/api\/jobs\/([\w-]+)(\/csv|\/md)?$/.exec(p);
+  /* ダウンロード。ファイル名はHRコード始まりで固定する（格納先を間違えないため）。
+     csv は xlsx に切り替える前のジョブのために残してある。 */
+  const DL = {
+    '/xlsx': j => j.xlsxB64 && [Buffer.from(j.xlsxB64, 'base64'),
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'scenes.xlsx'],
+    '/csv': j => j.csvText && [j.csvText, 'text/csv; charset=utf-8', 'scenes.csv'],
+    '/md': j => j.mdText && [j.mdText, 'text/markdown; charset=utf-8', 'plan.md'],
+  };
+  const jm = /^\/api\/jobs\/([\w-]+)(\/xlsx|\/csv|\/md)?$/.exec(p);
   if (jm) {
     const job = JOBS.find(j => j.id === jm[1]);
     if (!job) return sendJson(res, 404, { error: 'not found' });
     if (!isAdmin && job.user !== user.id) return sendJson(res, 403, { error: 'forbidden' });
     if (jm[2]) {
-      const isCsv = jm[2] === '/csv';
-      const text = isCsv ? job.csvText : job.mdText;
-      if (!text) return sendJson(res, 404, { error: 'not found' });
-      // ファイル名はHRコード始まりで固定する（格納先を間違えないため）。
-      return send(res, 200, text,
-        isCsv ? 'text/csv; charset=utf-8' : 'text/markdown; charset=utf-8',
-        { 'Content-Disposition': `attachment; filename="${job.code}_digest_${isCsv ? 'scenes.csv' : 'plan.md'}"` });
+      const got = DL[jm[2]](job);
+      if (!got) return sendJson(res, 404, { error: 'not found' });
+      const [body, type, suffix] = got;
+      return send(res, 200, body, type,
+        { 'Content-Disposition': `attachment; filename="${job.code}_digest_${suffix}"` });
     }
     return sendJson(res, 200, { job: publicJob(job), log: job.log || [] });
   }
