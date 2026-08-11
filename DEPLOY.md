@@ -33,16 +33,18 @@ Renderの無料プランは再起動でファイルが消える。消えて困�
    - Repository name: `4hr-digest`
    - **Private** を選ぶ
    - README等のチェックは全部外す
-2. このフォルダをそのまま上げる（フォルダ内でターミナルを開いて）:
+2. このフォルダをそのまま上げる。
+   **1行目の `cd` を必ず実行すること。** ホームディレクトリで git を叩くと、
+   ホーム配下の全ファイル（動画を含む）を取り込み始めてディスクを食い潰す。
 
 ```bash
-git init
-git add -A
-git commit -m "Initial deploy: 4HR ダイジェスト見どころ抽出アプリ"
-git branch -M main
+cd ~/Documents/Claude/Projects/4HR-digest-deploy
 git remote add origin https://github.com/manatouchita/4hr-digest.git
 git push -u origin main
 ```
+
+> `git init` とコミットは済んでいるので不要。
+> `git push` が `Everything up-to-date` か `new branch main -> main` と出れば成功。
 
 ---
 
