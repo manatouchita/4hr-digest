@@ -145,12 +145,16 @@ function pump() {
 
   // ログは進捗表示のためだけのもの。1行ごとに保存すると通信が膨れるので
   // メモリにだけ持ち、状態が変わったときにまとめて書く。
+  //
+  // ただしサーバのコンソールにも流す。ここを黙らせていたせいで、失敗したとき
+  // Renderのログに何も残らず、原因を追うのに画面を開いたままにする必要があった。
   const onData = buf => {
     for (const line of String(buf).split('\n')) {
       const t = line.trimEnd();
       if (!t) continue;
       job.log.push(t);
       if (job.log.length > 400) job.log.shift();
+      console.log(`[${job.id}] ${t}`);
     }
   };
   p.stdout.on('data', onData);
@@ -191,6 +195,10 @@ function finish(job, status, error) {
   job.status = status;
   job.error = error;
   job.finishedAt = now();
+  /* 失敗したときだけ、ログの末尾を記録に残す。
+     全文を残すと通信が膨れるが、原因は例外の直前数行にほぼ収まる。
+     ここを残さないと、実行中の画面を閉じた時点で原因が追えなくなる。 */
+  if (status === 'error') job.errorTail = (job.log || []).slice(-15).join('\n') || null;
   // 数百MBの動画を残すとディスクがすぐ埋まる。CSVは記録側に移してあるので消してよい。
   try { if (job.videoPath) fs.rmSync(path.dirname(job.videoPath), { recursive: true, force: true }); } catch {}
   job.videoPath = null;
@@ -202,6 +210,7 @@ function finish(job, status, error) {
 const publicJob = j => ({
   id: j.id, code: j.code, fileName: j.fileName, user: j.user, userName: j.userName,
   candidates: j.candidates, status: j.status, error: j.error || null,
+  errorTail: j.errorTail || null,
   createdAt: j.createdAt, finishedAt: j.finishedAt || null,
   sceneCount: j.sceneCount || null, warnCount: j.warnCount || null,
   videoDurationSec: j.videoDurationSec || null, costUsd: j.costUsd || 0,

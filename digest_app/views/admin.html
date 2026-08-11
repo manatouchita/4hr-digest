@@ -176,7 +176,10 @@ async function loadJobs() {
     tr.innerHTML = `
       <td><b>${esc(j.code)}</b></td>
       <td>${esc(j.userName || j.user)}</td>
-      <td><span class="tag ${cls}">${txt}</span></td>
+      <td><span class="tag ${cls}">${txt}</span>
+        ${j.errorTail ? `<details><summary style="font-size:11px;color:#666;cursor:pointer">ログ</summary>
+        <pre style="font-size:11px;background:#f6f7f9;padding:8px;border-radius:6px;overflow:auto;white-space:pre-wrap;max-width:420px">${esc(j.errorTail)}</pre></details>`
+        : (j.error ? `<div style="color:#a51c1c;font-size:11px">${esc(j.error)}</div>` : '')}</td>
       <td>${j.sceneCount ? j.sceneCount + '本' : '—'}</td>
       <td>${hhmm(j.videoDurationSec)}</td>
       <td>${j.costUsd ? '約' + Math.round(j.costUsd * YEN) + '円' : '—'}</td>

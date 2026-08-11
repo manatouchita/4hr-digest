@@ -237,7 +237,9 @@ async function loadHist() {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td><b>${esc(j.code)}</b></td>
-      <td><span class="tag ${cls}">${txt}</span>${j.error ? ' <span style="color:#a51c1c;font-size:11px">' + esc(j.error) + '</span>' : ''}</td>
+      <td><span class="tag ${cls}">${txt}</span>${j.error ? ' <span style="color:#a51c1c;font-size:11px">' + esc(j.error) + '</span>' : ''}
+        ${j.errorTail ? `<details style="margin-top:4px"><summary style="font-size:11px;color:#666;cursor:pointer">ログを見る</summary>
+        <pre style="font-size:11px;background:#f6f7f9;padding:8px;border-radius:6px;overflow:auto;white-space:pre-wrap">${esc(j.errorTail)}</pre></details>` : ''}</td>
       <td>${j.sceneCount ? j.sceneCount + '本' : '—'}</td>
       <td>${fmt(j.createdAt)}</td>
       <td>${j.hasCsv ? `<a class="dl" href="/api/jobs/${j.id}/csv">CSV</a>` : ''}${j.hasMd ? `<a class="dl" href="/api/jobs/${j.id}/md">詳細(md)</a>` : ''}</td>`;
