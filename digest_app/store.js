@@ -20,7 +20,10 @@ const path = require('path');
    原因が分かりにくい割に直し方は自明なので、ここで吸収する。 */
 const URL_ = (process.env.SUPABASE_URL || '').trim()
   .replace(/\/+$/, '').replace(/\/rest\/v1$/, '').replace(/\/+$/, '');
-const KEY = (process.env.SUPABASE_SERVICE_KEY || '').trim();
+/* キーは空白を全部落とす。長いので貼るときに折り返されることがあり、
+   途中に改行が入るとHTTPヘッダに載せられず、原因の分かりにくい形で落ちる。
+   キーの内部に空白が入ることは正当には有り得ないので、消して構わない。 */
+const KEY = (process.env.SUPABASE_SERVICE_KEY || '').replace(/\s+/g, '');
 const USE_DB = !!(URL_ && KEY);
 
 /* テーブルは2つ。列を細かく分けず data(jsonb) に丸ごと入れる。

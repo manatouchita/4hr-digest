@@ -17,6 +17,7 @@ import argparse
 import json
 import mimetypes
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -28,16 +29,29 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 CACHE_DIR = PROJECT_ROOT / "digest_cache"
 
 
+def _clean_key(v: str) -> str:
+    """APIキーから空白を全部落とす。
+
+    キーの途中に空白が入ることは正当には有り得ない。一方で、長いキーを
+    設定画面やターミナルから貼ると途中で折り返されて改行が紛れ込むことがあり、
+    そのままHTTPヘッダに載せると `Illegal header value` で落ちる。
+    エラーはヘッダ組み立ての段で出るため原因が分かりにくく、しかも
+    文字起こしを終えた後の工程で落ちると費用だけ掛かって成果が残らない。
+    前後だけでなく内部の空白も落として、貼り方の事故を吸収する。
+    """
+    return re.sub(r"\s+", "", v or "")
+
+
 def load_env_key(name: str) -> str | None:
     """環境変数 → プロジェクト直下の .env の順で探す。"""
     if os.environ.get(name):
-        return os.environ[name]
+        return _clean_key(os.environ[name]) or None
     env_file = PROJECT_ROOT / ".env"
     if env_file.exists():
         for line in env_file.read_text(encoding="utf-8").splitlines():
             line = line.strip()
             if line.startswith(f"{name}="):
-                return line.split("=", 1)[1].strip().strip('"').strip("'")
+                return _clean_key(line.split("=", 1)[1].strip().strip('"').strip("'")) or None
     return None
 API_URL = "https://api.openai.com/v1/audio/transcriptions"
 MODEL_NAME = "api-whisper"  # digest_poc.py の --whisper-model に渡す名前
