@@ -40,7 +40,7 @@ git init
 git add -A
 git commit -m "Initial deploy: 4HR ダイジェスト見どころ抽出アプリ"
 git branch -M main
-git remote add origin https://github.com/<あなたのID>/4hr-digest.git
+git remote add origin https://github.com/manatouchita/4hr-digest.git
 git push -u origin main
 ```
 
