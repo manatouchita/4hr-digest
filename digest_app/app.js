@@ -265,8 +265,13 @@ const server = http.createServer(async (req, res) => {
   if (p === '/api/upload' && req.method === 'PUT') {
     const code = String(u.searchParams.get('code') || '').trim();
     if (!HR_CODE_RE.test(code)) return sendJson(res, 400, { error: 'HRコードの形式が不正です' });
+    /* 音声だけでも受ける。パイプラインは冒頭で音声を抜いた後、映像を一切見ない。
+       30分のHRは動画だと1〜2GBあるが、書き出した音声なら数十MBで済む。
+       アップロードが待ち時間の大半なので、編集ソフトから音声だけ書き出せる
+       場合はそのほうが速い。ffmpegは中身を見て判別するので扱いは変わらない。 */
     const orig = path.basename(String(u.searchParams.get('name') || 'video.mp4'));
-    const ext = ['.mp4', '.mov', '.m4v', '.mkv'].includes(path.extname(orig).toLowerCase())
+    const ext = ['.mp4', '.mov', '.m4v', '.mkv',
+      '.m4a', '.mp3', '.wav', '.aac', '.flac', '.ogg'].includes(path.extname(orig).toLowerCase())
       ? path.extname(orig).toLowerCase() : '.mp4';
     // digest_poc.py は動画のstem（拡張子なしのファイル名）を出力物の名前や
     // md の見出しに使う。ファイル名をHRコードそのものにしておかないと

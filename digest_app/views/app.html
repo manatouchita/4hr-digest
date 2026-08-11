@@ -72,6 +72,31 @@
   .empty { color: #9aa5b1; font-size: 12.5px; padding: 8px 0; }
   .msg { font-size: 12.5px; margin-top: 10px; }
   .msg.err { color: #a51c1c; }
+  /* 使い方。初回は開いた状態で出し、閉じたらその状態を覚える。
+     毎回たたまれていると誰も開かないが、毎回開いていると邪魔になる。 */
+  .guide summary {
+    font-size: 14px; font-weight: 700; cursor: pointer; list-style: none;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .guide summary::-webkit-details-marker { display: none; }
+  .guide summary::before { content: '▸'; color: #7b8794; font-weight: 400; }
+  .guide[open] summary::before { content: '▾'; }
+  .guide[open] summary { margin-bottom: 12px; }
+  .guide h3 {
+    font-size: 12px; color: #7b8794; margin: 18px 0 6px;
+    letter-spacing: .04em; border-bottom: 1px solid #eef1f4; padding-bottom: 4px;
+  }
+  .guide h3:first-of-type { margin-top: 0; }
+  .guide ol, .guide ul { margin: 0; padding-left: 1.4em; font-size: 13px; }
+  .guide li { margin-bottom: 5px; }
+  .guide p { font-size: 13px; margin: 0 0 8px; }
+  .guide table { font-size: 12.5px; }
+  .guide th, .guide td { padding: 5px 8px; vertical-align: top; }
+  .guide th { white-space: nowrap; color: #1f2933; font-weight: 600; width: 1%; }
+  .guide code {
+    background: #f4f5f7; border: 1px solid #e4e7eb; border-radius: 4px;
+    padding: 1px 5px; font-size: 12px;
+  }
 </style>
 </head>
 <body>
@@ -88,12 +113,65 @@
     抜粋は「切り出す位置を確かめるための目印」として使い、実際に何と言っているかは必ず映像で確認してください。<b>時刻は音声に合わせてあります。</b>
   </div>
 
+  <details class="card guide" id="guide">
+    <summary>使い方</summary>
+
+    <p><b>このツールは、予告編に入れる「見どころ候補」を探して一覧表にするものです。</b>
+    動画は作りません。切り出す時刻の当たりを付けるまでが役割で、
+    実際にどこを使うかを決めるのは編集者です。</p>
+
+    <h3>1. アップロードする</h3>
+    <ol>
+      <li><b>完成版（カット済み）のHR</b>を1本置く。編集前の素材ではありません</li>
+      <li><b>音声ファイルでも構いません。</b>使うのは音声だけなので結果は同じで、
+        アップロードがずっと速く終わります。編集ソフトから音声書き出しができるならそちらを推奨</li>
+      <li>HRコード（<code>25-UT-ot-01</code> の形）はファイル名から自動で入ります。
+        入らなければ手で入れてください。<b>出力ファイルの名前になる</b>ので、間違えると格納先を間違えます</li>
+      <li>候補の本数は<b>6本のままで構いません</b>。上位2本が採用想定、残りは差し替え用の予備です</li>
+    </ol>
+
+    <h3>2. 待つ</h3>
+    <p>30分のHRで<b>2分ほど</b>。<b>終わるまで画面を閉じないでください。</b>
+    処理中に閉じると結果を受け取れないことがあります。
+    しばらく誰も使っていないとサーバが寝ているので、最初の1分ほど反応しないことがあります（故障ではありません）。</p>
+
+    <h3>3. 一覧表（xlsx）を見る</h3>
+    <p>実行履歴からダウンロードします。1行が1シーン候補です。</p>
+    <table>
+      <tr><th>区分</th><td><b>推奨</b>が上位2本＝採用想定。<b>予備</b>は差し替えを検討する用</td></tr>
+      <tr><th>IN / OUT</th><td>切り出す位置。<b>時刻は音声に合わせてあります</b></td></tr>
+      <tr><th>尺(秒)</th><td>20〜35秒が想定。外れているものは警告列に出ます</td></tr>
+      <tr><th>抜粋</th><td><b>自動文字起こしなので誤変換があります</b>（例:「京大」が「兄弟」）。
+        どこを切るかの目印として使い、<b>何と言っているかは必ず映像で確認</b>してください</td></tr>
+      <tr><th>テロップ案</th><td>字幕の下書き。そのまま使う前提ではなく、直して構いません</td></tr>
+      <tr><th>警告</th><td>尺が範囲外、時刻を自動補正した、など。目を通してから採否を決めてください</td></tr>
+    </table>
+
+    <h3>4. 記入してDriveに入れる</h3>
+    <p>色の付いた右側5列（<b>採用 / テロップ確定 / IN修正 / OUT修正 / メモ</b>）が記入欄です。
+    埋めたらDriveの所定の場所に手で格納してください。
+    Drive上で右クリック →「アプリで開く」→ Googleスプレッドシート で開けます。</p>
+
+    <h3>うまくいかないとき</h3>
+    <ul>
+      <li><b>52分を超えるHRは通りません。</b>文字起こし側の上限です</li>
+      <li>同時に処理できるのは1本。他の人が実行中なら待機列に入ります</li>
+      <li><b>同じHRを上げ直すと費用が二重にかかります。</b>やり直す前に、失敗の理由を履歴の「ログを見る」で確認してください</li>
+      <li>候補が的外れなときは、本数を増やすより<b>そのまま予備から選ぶ</b>ほうが早いことが多いです</li>
+    </ul>
+  </details>
+
   <div class="card">
     <h2>完成版HRから見どころ候補を出す</h2>
     <div class="drop" id="drop">
-      <strong id="dropTitle">動画ファイルを選ぶ</strong>
-      <span id="dropSub">ここにドラッグ、またはクリックして選択（編集済みの完成版mp4）</span>
-      <input type="file" id="file" accept="video/*,.mp4,.mov,.m4v,.mkv" hidden>
+      <strong id="dropTitle">ファイルを選ぶ</strong>
+      <span id="dropSub">ここにドラッグ、またはクリックして選択（編集済みの完成版）</span>
+      <input type="file" id="file" accept="video/*,audio/*,.mp4,.mov,.m4v,.mkv,.m4a,.mp3,.wav,.aac,.flac" hidden>
+    </div>
+    <div class="hint" style="margin-top:6px">
+      <b>音声ファイルでも構いません。</b>使うのは音声だけなので結果は変わりません。
+      編集ソフトから音声だけ書き出せる場合は、そのほうがアップロードがずっと速く終わります
+      （30分のHRで、動画1〜2GBに対し音声は数十MB）。
     </div>
     <div class="row">
       <div>
@@ -136,6 +214,13 @@ const USER = __USER__;
 const $ = s => document.querySelector(s);
 $('#who').textContent = USER.name;
 if (USER.role === 'admin') $('#adminLink').hidden = false;
+
+/* 使い方は初回だけ開いた状態で出す。閉じたらそれを覚える。
+   慣れた人には毎回開いていると邪魔で、初めての人には
+   たたまれていると存在に気付かれない。 */
+const guide = $('#guide');
+guide.open = localStorage.getItem('guideClosed') !== '1';
+guide.ontoggle = () => localStorage.setItem('guideClosed', guide.open ? '0' : '1');
 
 const CODE_RE = /^\d{2}-[A-Z]{2}-[a-z]{2}-\d{2}$/;
 let picked = null;
