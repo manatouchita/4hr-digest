@@ -51,14 +51,22 @@ git push -u origin main
 ## 3. Render（アプリを動かす場所）
 
 1. https://render.com にGitHubアカウントでサインイン
-2. **New +** → **Web Service** → さっきの `4hr-digest` リポジトリを選ぶ
-3. 設定は `render.yaml` が読まれるのでほぼ触らなくてよい。
-   **Instance Type が `Free` になっていること**だけ確認する
+2. **New +** → **Blueprint** → さっきの `4hr-digest` リポジトリを選ぶ
+
+   > **Web Service ではなく Blueprint を選ぶこと。**
+   > Web Service で作るとRenderが `package.json` を見てNode環境と判定し、
+   > `render.yaml` が無視される。するとffmpegとPythonの入っていない
+   > コンテナで動いてしまい、起動はしてもジョブが必ず失敗する。
+   > Blueprint なら `render.yaml` が読まれ、Dockerでビルドされる。
+
+3. 設定は `render.yaml` に書いてあるので触らなくてよい。
+   ログに `==> Building image` のような行が出ればDockerで動いている。
+   `yarn start` や `npm start` が出ていたら選択を間違えているので作り直す
 4. **Environment Variables** に次を入れる（`SESSION_SECRET` は自動生成されるので不要）
 
    | キー | 値 |
    |------|-----|
-   | `SUPABASE_URL` | 手順1で控えたProject URL |
+   | `SUPABASE_URL` | 手順1で控えたProject URL（`https://xxxx.supabase.co`。末尾に `/rest/v1` を付けない） |
    | `SUPABASE_SERVICE_KEY` | 手順1で控えたservice_roleキー |
    | `OPENAI_API_KEY` | 文字起こし用（既存のもの） |
    | `ANTHROPIC_API_KEY` | 見どころ選定用（既存のもの） |
@@ -72,7 +80,12 @@ git push -u origin main
 - **ビルドが失敗する** → Logsタブの赤い行を見る。ffmpegやpipの取得失敗なら、
   時間を置いて **Manual Deploy → Clear build cache & deploy**
 - **画面は出るがジョブが必ず失敗する** → ログに
-  `ANTHROPIC_API_KEY が見つかりません` 等が出ていないか見る。環境変数の入れ忘れ
+  `ANTHROPIC_API_KEY が見つかりません` 等が出ていないか見る。環境変数の入れ忘れ。
+  `ffmpeg: not found` や `python3: not found` なら手順2の選択ミス（Docker で動いていない）
+- **`Supabase 404 ... PGRST125`** → `SUPABASE_URL` にパスが混ざっている。
+  `https://xxxx.supabase.co` だけにする
+- **`Supabase 404 ... PGRST205`（Could not find the table）** → 手順1のSQLを流し忘れ
+- **`Supabase 401`** → キーが違う。`anon public` ではなく **service_role** のほう
 - **ログインしても弾かれる** → `SUPABASE_URL` / `SUPABASE_SERVICE_KEY` が違うと
   起動ログの「状態の保存先」が `file` になる。`supabase` と出ているか確認
 

@@ -14,8 +14,13 @@
 const fs = require('fs');
 const path = require('path');
 
-const URL_ = process.env.SUPABASE_URL || '';
-const KEY = process.env.SUPABASE_SERVICE_KEY || '';
+/* SUPABASE_URL はホスト名だけを期待する（https://xxxx.supabase.co）。
+   ただし画面から拾うと末尾に /rest/v1 やスラッシュが付いてくることがあり、
+   そのまま繋ぐと /rest/v1/rest/v1/... になって PGRST125 で落ちる。
+   原因が分かりにくい割に直し方は自明なので、ここで吸収する。 */
+const URL_ = (process.env.SUPABASE_URL || '').trim()
+  .replace(/\/+$/, '').replace(/\/rest\/v1$/, '').replace(/\/+$/, '');
+const KEY = (process.env.SUPABASE_SERVICE_KEY || '').trim();
 const USE_DB = !!(URL_ && KEY);
 
 /* テーブルは2つ。列を細かく分けず data(jsonb) に丸ごと入れる。
@@ -25,14 +30,17 @@ const T_USERS = 'digest_users';
 const T_JOBS = 'digest_jobs';
 
 async function rest(pathQuery, init = {}) {
-  const r = await fetch(`${URL_.replace(/\/$/, '')}/rest/v1/${pathQuery}`, {
+  const url = `${URL_}/rest/v1/${pathQuery}`;
+  const r = await fetch(url, {
     ...init,
     headers: {
       apikey: KEY, Authorization: `Bearer ${KEY}`,
       'Content-Type': 'application/json', ...(init.headers || {}),
     },
   });
-  if (!r.ok) throw new Error(`Supabase ${r.status}: ${(await r.text()).slice(0, 300)}`);
+  // 失敗時は叩いた先も出す。キーの誤りかURLの誤りかテーブル未作成かで
+  // 対処が全く違うのに、本文だけでは見分けが付かない。
+  if (!r.ok) throw new Error(`Supabase ${r.status} (${url}): ${(await r.text()).slice(0, 300)}`);
   const body = await r.text();
   return body ? JSON.parse(body) : null;
 }
